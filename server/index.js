@@ -53,11 +53,20 @@ async function scrapeEmails(targetUrl, depth = 1, visited = new Set()) {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9'
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       },
       timeout: 15000,
-      maxRedirects: 5
+      maxRedirects: 5,
+      validateStatus: false // Check status manually
     });
+
+    console.log(`Response status: ${response.status} for ${targetUrl}`);
+    if (response.status !== 200) {
+      console.warn(`Failed to fetch ${targetUrl}: ${response.status}`);
+      return [];
+    }
 
     const html = response.data;
     if (typeof html !== 'string') {
@@ -81,11 +90,16 @@ async function scrapeEmails(targetUrl, depth = 1, visited = new Set()) {
     });
 
     // Decode Cloudflare protected emails
-    $('a[href*="/cdn-cgi/l/email-protection#"]').each((i, el) => {
+    const cfLinks = $('a[href*="/cdn-cgi/l/email-protection#"]');
+    console.log(`Found ${cfLinks.length} Cloudflare links`);
+    cfLinks.each((i, el) => {
       const href = $(el).attr('href');
-      const encoded = href.split('#')[1];
+      console.log(`Processing link: ${href}`);
+      const parts = href.split('#');
+      const encoded = parts.length > 1 ? parts[1] : null;
       if (encoded) {
         const decoded = decodeCloudflareEmail(encoded);
+        console.log(`Decoded from link: ${decoded}`);
         if (decoded && EMAIL_REGEX.test(decoded)) {
           foundEmails.push(decoded);
         }
@@ -93,13 +107,14 @@ async function scrapeEmails(targetUrl, depth = 1, visited = new Set()) {
     });
 
     // Also check for data-cfemail attributes
-    $('[data-cfemail]').each((i, el) => {
+    const cfElements = $('[data-cfemail]');
+    console.log(`Found ${cfElements.length} elements with data-cfemail`);
+    cfElements.each((i, el) => {
       const encoded = $(el).attr('data-cfemail');
-      if (encoded) {
-        const decoded = decodeCloudflareEmail(encoded);
-        if (decoded && EMAIL_REGEX.test(decoded)) {
-          foundEmails.push(decoded);
-        }
+      const decoded = decodeCloudflareEmail(encoded);
+      console.log(`Decoded from attribute: ${decoded}`);
+      if (decoded && EMAIL_REGEX.test(decoded)) {
+        foundEmails.push(decoded);
       }
     });
 
