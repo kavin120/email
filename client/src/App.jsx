@@ -19,7 +19,8 @@ function App() {
     setResults([]);
 
     try {
-      const response = await axios.post('http://localhost:5001/api/scrape', { 
+      const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:5001/api/scrape' : '/api/scrape';
+      const response = await axios.post(API_URL, { 
         url, 
         depth 
       });
