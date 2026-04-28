@@ -29,6 +29,20 @@ function getMainDomain(hostname) {
   return hostname.replace(/^www\./, '');
 }
 
+function decodeCloudflareEmail(encodedString) {
+  try {
+    let email = '';
+    const key = parseInt(encodedString.substr(0, 2), 16);
+    for (let n = 2; n < encodedString.length; n += 2) {
+      const charCode = parseInt(encodedString.substr(n, 2), 16) ^ key;
+      email += String.fromCharCode(charCode);
+    }
+    return email;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function scrapeEmails(targetUrl, depth = 1, visited = new Set()) {
   if (depth < 0 || visited.has(targetUrl)) return [];
   visited.add(targetUrl);
@@ -63,6 +77,29 @@ async function scrapeEmails(targetUrl, depth = 1, visited = new Set()) {
       email = email.trim();
       if (email && EMAIL_REGEX.test(email)) {
         foundEmails.push(email);
+      }
+    });
+
+    // Decode Cloudflare protected emails
+    $('a[href*="/cdn-cgi/l/email-protection#"]').each((i, el) => {
+      const href = $(el).attr('href');
+      const encoded = href.split('#')[1];
+      if (encoded) {
+        const decoded = decodeCloudflareEmail(encoded);
+        if (decoded && EMAIL_REGEX.test(decoded)) {
+          foundEmails.push(decoded);
+        }
+      }
+    });
+
+    // Also check for data-cfemail attributes
+    $('[data-cfemail]').each((i, el) => {
+      const encoded = $(el).attr('data-cfemail');
+      if (encoded) {
+        const decoded = decodeCloudflareEmail(encoded);
+        if (decoded && EMAIL_REGEX.test(decoded)) {
+          foundEmails.push(decoded);
+        }
       }
     });
 
