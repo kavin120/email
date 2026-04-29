@@ -41,7 +41,7 @@ From the root directory, run:
 ```bash
 npm run dev
 ```
-The backend will start on port `5001` and the frontend on port `5173`.
+The backend will start on port `5002` and the frontend on port `5174`.
 
 ## Usage
 1. Enter a URL (e.g., `example.com` or `https://example.com`).
